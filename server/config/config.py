@@ -137,6 +137,20 @@ CONFIG = {
                     "required": ["city"]
                 }
             },
+            {
+                "name": "get_date_and_time",
+                "description": "Get current date and time information for a specific timezone",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "timezone": {
+                            "type": "string",
+                            "description": "The timezone to get date and time for (e.g., 'America/New_York', 'UTC', 'Asia/Tokyo'). If not provided, defaults to UTC."
+                        }
+                    },
+                    "required": []
+                }
+            }
         ]
     }],
     "system_instruction": SYSTEM_INSTRUCTIONS
