@@ -2,7 +2,7 @@ import requests
 
 def get_weather(params):
     """Get current weather information for a city using OpenWeatherMap API."""
-    # city = params.get('city')
+    city = params.get('city')
     api_key = params.get('api_key', 'b2587aab605c990a19de370e029f7629')  # Default API key
     
     if not city:
