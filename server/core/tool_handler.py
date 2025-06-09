@@ -26,6 +26,7 @@ import sys
 from weather import get_weather
 from langdetect import detect, DetectorFactory
 from langdetect.lang_detect_exception import LangDetectException
+from note_taking import NoteTaking
 
 # Python 3.9+ has zoneinfo in the standard library
 if sys.version_info >= (3, 9):
@@ -196,7 +197,70 @@ async def execute_tool(tool_name: str, params: Dict[str, Any]) -> Dict[str, Any]
         # Log language detection
         logger.info(f"Detected language: {lang_config['name']}")
         
-        if tool_name == "get_date_and_time":
+        # Initialize note taking system
+        note_taker = NoteTaking()
+        
+        # Handle note-taking operations
+        if tool_name == "add_note":
+            try:
+                result = note_taker.add_note(
+                    note_name=params.get('note_name'),
+                    content=params.get('content')
+                )
+                # Add language information to response
+                if isinstance(result, dict):
+                    result['language'] = {
+                        "code": detected_lang,
+                        "name": lang_config['name']
+                    }
+                return result
+            except Exception as e:
+                logger.error(f"Note creation/update failed: {str(e)}")
+                return {"error": f"Note operation failed: {str(e)}"}
+                
+        elif tool_name == "get_note":
+            try:
+                result = note_taker.get_note(params.get('note_name'))
+                # Add language information to response
+                if isinstance(result, dict):
+                    result['language'] = {
+                        "code": detected_lang,
+                        "name": lang_config['name']
+                    }
+                return result
+            except Exception as e:
+                logger.error(f"Note retrieval failed: {str(e)}")
+                return {"error": f"Note retrieval failed: {str(e)}"}
+                
+        elif tool_name == "get_all_notes":
+            try:
+                result = note_taker.get_all_notes()
+                # Add language information to response
+                if isinstance(result, dict):
+                    result['language'] = {
+                        "code": detected_lang,
+                        "name": lang_config['name']
+                    }
+                return result
+            except Exception as e:
+                logger.error(f"Notes retrieval failed: {str(e)}")
+                return {"error": f"Notes retrieval failed: {str(e)}"}
+                
+        elif tool_name == "delete_note":
+            try:
+                result = note_taker.delete_note(params.get('note_name'))
+                # Add language information to response
+                if isinstance(result, dict):
+                    result['language'] = {
+                        "code": detected_lang,
+                        "name": lang_config['name']
+                    }
+                return result
+            except Exception as e:
+                logger.error(f"Note deletion failed: {str(e)}")
+                return {"error": f"Note deletion failed: {str(e)}"}
+        
+        elif tool_name == "get_date_and_time":
             # Local date and time logic with language-specific timezone
             timezone = params.get("timezone", lang_config['timezone'])
             try:

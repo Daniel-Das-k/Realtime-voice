@@ -317,6 +317,61 @@ CONFIG = {
                     "properties": {},
                     "required": []
                 }
+            },
+            {
+                "name": "add_note",
+                "description": "Add a new note or update an existing one",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "note_name": {
+                            "type": "string",
+                            "description": "Name of the note (required)"
+                        },
+                        "content": {
+                            "type": "string",
+                            "description": "Content of the note (required)"
+                        }
+                    },
+                    "required": ["note_name", "content"]
+                }
+            },
+            {
+                "name": "get_note",
+                "description": "Get a specific note by name",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "note_name": {
+                            "type": "string",
+                            "description": "Name of the note to retrieve"
+                        }
+                    },
+                    "required": ["note_name"]
+                }
+            },
+            {
+                "name": "get_all_notes",
+                "description": "Get all notes from the system",
+                "parameters": {
+                    "type": "object",
+                    "properties": {},
+                    "required": []
+                }
+            },
+            {
+                "name": "delete_note",
+                "description": "Delete a note by name",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "note_name": {
+                            "type": "string",
+                            "description": "Name of the note to delete"
+                        }
+                    },
+                    "required": ["note_name"]
+                }
             }
         ]
     }],
