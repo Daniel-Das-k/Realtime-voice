@@ -8,10 +8,18 @@ from zoneinfo import ZoneInfo
 from typing import Dict, Any, Optional, Tuple, List
 
 SCOPES = ['https://www.googleapis.com/auth/calendar']
+TIMEZONE = 'Asia/Kolkata'
+SEARCH_WINDOW_DAYS = 365  # Standard search window of 1 year
 
 def get_ist_time() -> datetime:
     """Get current time in IST"""
-    return datetime.now(ZoneInfo('Asia/Kolkata'))
+    return datetime.now(ZoneInfo(TIMEZONE))
+
+def ensure_ist_timezone(dt: datetime) -> datetime:
+    """Ensure datetime is in IST timezone"""
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=ZoneInfo(TIMEZONE))
+    return dt.astimezone(ZoneInfo(TIMEZONE))
 
 def get_calendar_service() -> Tuple[Any, str]:
     """Authenticate and get Google Calendar service"""
@@ -46,7 +54,7 @@ def get_calendar_service() -> Tuple[Any, str]:
         if not calendar_id:
             new_calendar = {
                 'summary': 'Python Calendar',
-                'timeZone': 'Asia/Kolkata'
+                'timeZone': TIMEZONE
             }
             created_calendar = service.calendars().insert(body=new_calendar).execute()
             calendar_id = created_calendar['id']
@@ -71,8 +79,8 @@ def get_events(service, calendar_id: str, event_name: Optional[str] = None,
         if not start_date and not end_date:
             if event_name:
                 # For name-only searches, look in a wider time range
-                start_date = current_time - timedelta(days=365)  # Look back 1 year
-                end_date = current_time + timedelta(days=365)    # Look ahead 1 year
+                start_date = current_time - timedelta(days=SEARCH_WINDOW_DAYS)
+                end_date = current_time + timedelta(days=SEARCH_WINDOW_DAYS)
             else:
                 # For date-only searches, default to today
                 start_date = current_time.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -81,16 +89,14 @@ def get_events(service, calendar_id: str, event_name: Optional[str] = None,
             print(f"Original start_date: {start_date}")
             print(f"Original end_date: {end_date}")
             
-            # Convert input dates to UTC if they are naive (no timezone)
-            if start_date and start_date.tzinfo is None:
-                # Assume the input time is already in IST
-                start_date = start_date.replace(tzinfo=ZoneInfo('Asia/Kolkata'))
-                print(f"Added IST timezone to start_date: {start_date}")
+            # Ensure dates are in IST
+            if start_date:
+                start_date = ensure_ist_timezone(start_date)
+                print(f"Ensured IST timezone for start_date: {start_date}")
             
-            if end_date and end_date.tzinfo is None:
-                # Assume the input time is already in IST
-                end_date = end_date.replace(tzinfo=ZoneInfo('Asia/Kolkata'))
-                print(f"Added IST timezone to end_date: {end_date}")
+            if end_date:
+                end_date = ensure_ist_timezone(end_date)
+                print(f"Ensured IST timezone for end_date: {end_date}")
             
             # If only start_date is provided, set end_date to end of that day
             if start_date and not end_date:
@@ -154,20 +160,18 @@ def create_event(service, calendar_id: str, event_details: Dict[str, Any]) -> Di
                 if 'dateTime' in event_details['start']:
                     # Convert to IST if timezone is not specified or is different
                     dt = datetime.fromisoformat(event_details['start']['dateTime'].replace('Z', '+00:00'))
-                    if dt.tzinfo != ZoneInfo('Asia/Kolkata'):
-                        dt = dt.astimezone(ZoneInfo('Asia/Kolkata'))
+                    dt = ensure_ist_timezone(dt)
                     event_details['start']['dateTime'] = dt.isoformat()
-                event_details['start']['timeZone'] = 'Asia/Kolkata'
+                event_details['start']['timeZone'] = TIMEZONE
                 
         if 'end' in event_details:
             if isinstance(event_details['end'], dict):
                 if 'dateTime' in event_details['end']:
                     # Convert to IST if timezone is not specified or is different
                     dt = datetime.fromisoformat(event_details['end']['dateTime'].replace('Z', '+00:00'))
-                    if dt.tzinfo != ZoneInfo('Asia/Kolkata'):
-                        dt = dt.astimezone(ZoneInfo('Asia/Kolkata'))
+                    dt = ensure_ist_timezone(dt)
                     event_details['end']['dateTime'] = dt.isoformat()
-                event_details['end']['timeZone'] = 'Asia/Kolkata'
+                event_details['end']['timeZone'] = TIMEZONE
             
         created_event = service.events().insert(
             calendarId=calendar_id,
@@ -209,10 +213,9 @@ def update_event(service, calendar_id: str, updated_details: Dict[str, Any],
         if event_date:
             print(f"Original event_date: {event_date}")
             
-            # If the date is naive (no timezone), assume it's in IST
-            if event_date.tzinfo is None:
-                event_date = event_date.replace(tzinfo=ZoneInfo('Asia/Kolkata'))
-                print(f"Added IST timezone: {event_date}")
+            # Ensure date is in IST
+            event_date = ensure_ist_timezone(event_date)
+            print(f"Ensured IST timezone: {event_date}")
             
             # Set search window to ±5 minutes around the event date
             start_date = event_date - timedelta(minutes=5)
@@ -226,8 +229,8 @@ def update_event(service, calendar_id: str, updated_details: Dict[str, Any],
                 print(f"Full day search: {start_date} to {end_date}")
         else:
             # If only searching by name, use a wider time range
-            start_date = current_time - timedelta(days=30)
-            end_date = current_time + timedelta(days=30)
+            start_date = current_time - timedelta(days=SEARCH_WINDOW_DAYS)
+            end_date = current_time + timedelta(days=SEARCH_WINDOW_DAYS)
         
         # Search for the event
         events = get_events(
@@ -270,10 +273,9 @@ def update_event(service, calendar_id: str, updated_details: Dict[str, Any],
                     if 'dateTime' in value:
                         # Convert to IST if timezone is not specified or is different
                         dt = datetime.fromisoformat(value['dateTime'].replace('Z', '+00:00'))
-                        if dt.tzinfo != ZoneInfo('Asia/Kolkata'):
-                            dt = dt.astimezone(ZoneInfo('Asia/Kolkata'))
+                        dt = ensure_ist_timezone(dt)
                         value['dateTime'] = dt.isoformat()
-                    value['timeZone'] = 'Asia/Kolkata'
+                    value['timeZone'] = TIMEZONE
                     updated_event_body[key] = value
                 else:
                     updated_event_body[key] = value
@@ -283,9 +285,9 @@ def update_event(service, calendar_id: str, updated_details: Dict[str, Any],
         
         # Ensure timezone is set for start and end times if they exist
         if 'start' in updated_event_body and updated_event_body['start']:
-            updated_event_body['start']['timeZone'] = 'Asia/Kolkata'
+            updated_event_body['start']['timeZone'] = TIMEZONE
         if 'end' in updated_event_body and updated_event_body['end']:
-            updated_event_body['end']['timeZone'] = 'Asia/Kolkata'
+            updated_event_body['end']['timeZone'] = TIMEZONE
             
         # Remove any None values from the body
         updated_event_body = {k: v for k, v in updated_event_body.items() if v is not None}
@@ -339,10 +341,20 @@ def delete_event(service, calendar_id: str,
         if event_date:
             print(f"Original event_date: {event_date}")
             
-            # If the date is naive (no timezone), assume it's in IST
-            if event_date.tzinfo is None:
-                event_date = event_date.replace(tzinfo=ZoneInfo('Asia/Kolkata'))
-                print(f"Added IST timezone: {event_date}")
+            # If event_date is a string, parse it
+            if isinstance(event_date, str):
+                try:
+                    event_date = datetime.fromisoformat(event_date.replace('Z', '+00:00'))
+                except ValueError as e:
+                    return {
+                        "success": False,
+                        "message": f"Invalid date format: {str(e)}",
+                        "deleted_event": None
+                    }
+            
+            # Ensure date is in IST
+            event_date = ensure_ist_timezone(event_date)
+            print(f"Ensured IST timezone: {event_date}")
             
             # Set search window to ±5 minutes around the event date
             start_date = event_date - timedelta(minutes=5)
@@ -356,8 +368,8 @@ def delete_event(service, calendar_id: str,
                 print(f"Full day search: {start_date} to {end_date}")
         else:
             # If only searching by name, use a wider time range
-            start_date = current_time - timedelta(days=30)
-            end_date = current_time + timedelta(days=30)
+            start_date = current_time - timedelta(days=SEARCH_WINDOW_DAYS)
+            end_date = current_time + timedelta(days=SEARCH_WINDOW_DAYS)
         
         # Search for the event
         events = get_events(
@@ -430,8 +442,8 @@ def get_all_events(service, calendar_id: str) -> List[Dict[str, Any]]:
         current_time = get_ist_time()
         
         # Set a wide time range to get all events
-        start_date = current_time - timedelta(days=365)  # Look back 1 year
-        end_date = current_time + timedelta(days=365)    # Look ahead 1 year
+        start_date = current_time - timedelta(days=SEARCH_WINDOW_DAYS)
+        end_date = current_time + timedelta(days=SEARCH_WINDOW_DAYS)
         
         time_min = start_date.isoformat()
         time_max = end_date.isoformat()
@@ -475,16 +487,16 @@ def main():
         current_time = get_ist_time()
         event_time = current_time + timedelta(days=1)
         event_details = {
-        'summary': 'Python Meeting',
+            'summary': 'Python Meeting',
             'location': 'Chennai, Tamil Nadu, India',
-        'description': 'A meeting to discuss Python projects.',
-        'start': {
+            'description': 'A meeting to discuss Python projects.',
+            'start': {
                 'dateTime': event_time.isoformat(),
-                'timeZone': 'Asia/Kolkata',
-        },
-        'end': {
+                'timeZone': TIMEZONE,
+            },
+            'end': {
                 'dateTime': (event_time + timedelta(hours=1)).isoformat(),
-                'timeZone': 'Asia/Kolkata',
+                'timeZone': TIMEZONE,
             },
         }
         
@@ -527,11 +539,11 @@ def main():
                 'description': 'An updated meeting to discuss Python projects.',
                 'start': {
                     'dateTime': event_time.isoformat(),
-                    'timeZone': 'Asia/Kolkata',
+                    'timeZone': TIMEZONE,
                 },
                 'end': {
                     'dateTime': (event_time + timedelta(hours=1)).isoformat(),
-                    'timeZone': 'Asia/Kolkata',
+                    'timeZone': TIMEZONE,
                 },
             }
             updated_event = update_event(
