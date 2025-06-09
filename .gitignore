@@ -179,7 +179,7 @@ server/tools/slidev_tool/slidev/*
 
 .DS_Store
 .aider*
-server/credentials.json
+server/1.json
 
 .venv/
 concatenate.py
