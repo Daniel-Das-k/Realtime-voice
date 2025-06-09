@@ -177,6 +177,7 @@ server/tools/slidev_tool/slidev/*
 !server/tools/slidev_tool/slidev/slides_initial.md
 
 
+server/token.pickle
 .DS_Store
 .aider*
 server/1.json
