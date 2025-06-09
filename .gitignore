@@ -179,6 +179,7 @@ server/tools/slidev_tool/slidev/*
 
 .DS_Store
 .aider*
+server/credentials.json
 
 .venv/
 concatenate.py
