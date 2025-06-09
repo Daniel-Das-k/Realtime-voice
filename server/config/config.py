@@ -145,9 +145,176 @@ CONFIG = {
                     "properties": {
                         "timezone": {
                             "type": "string",
-                            "description": "The timezone to get date and time for (e.g., 'America/New_York', 'UTC', 'Asia/Tokyo'). If not provided, defaults to UTC."
+                            "description": "The timezone to get date and time for (e.g., 'America/New_York', 'asia/kolkata', 'Asia/Tokyo'). If not provided, defaults to asia/kolkata."
                         }
                     },
+                    "required": []
+                }
+            },
+            {
+                "name": "create_event",
+                "description": "Create a new calendar event",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "summary": {
+                            "type": "string",
+                            "description": "Title or summary of the event"
+                        },
+                        "location": {
+                            "type": "string",
+                            "description": "Location of the event"
+                        },
+                        "description": {
+                            "type": "string",
+                            "description": "Detailed description of the event"
+                        },
+                        "start": {
+                            "type": "object",
+                            "properties": {
+                                "dateTime": {
+                                    "type": "string",
+                                    "description": "Start time of the event in ISO format"
+                                },
+                                "timeZone": {
+                                    "type": "string",
+                                    "description": "Timezone of the event (defaults to Asia/Kolkata)"
+                                }
+                            },
+                            "required": ["dateTime"]
+                        },
+                        "end": {
+                            "type": "object",
+                            "properties": {
+                                "dateTime": {
+                                    "type": "string",
+                                    "description": "End time of the event in ISO format"
+                                },
+                                "timeZone": {
+                                    "type": "string",
+                                    "description": "Timezone of the event (defaults to Asia/Kolkata)"
+                                }
+                            },
+                            "required": ["dateTime"]
+                        }
+                    },
+                    "required": ["summary", "start", "end"]
+                }
+            },
+            {
+                "name": "update_event",
+                "description": "Update an existing calendar event by name or date",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "event_name": {
+                            "type": "string",
+                            "description": "Name of the event to update (optional if event_date is provided)"
+                        },
+                        "event_date": {
+                            "type": "string",
+                            "description": "Date and time of the event to update in ISO format (optional if event_name is provided)"
+                        },
+                        "updated_details": {
+                            "type": "object",
+                            "properties": {
+                                "summary": {
+                                    "type": "string",
+                                    "description": "New title or summary of the event"
+                                },
+                                "location": {
+                                    "type": "string",
+                                    "description": "New location of the event"
+                                },
+                                "description": {
+                                    "type": "string",
+                                    "description": "New detailed description of the event"
+                                },
+                                "start": {
+                                    "type": "object",
+                                    "properties": {
+                                        "dateTime": {
+                                            "type": "string",
+                                            "description": "New start time of the event in ISO format"
+                                        },
+                                        "timeZone": {
+                                            "type": "string",
+                                            "description": "Timezone of the event (defaults to Asia/Kolkata)"
+                                        }
+                                    }
+                                },
+                                "end": {
+                                    "type": "object",
+                                    "properties": {
+                                        "dateTime": {
+                                            "type": "string",
+                                            "description": "New end time of the event in ISO format"
+                                        },
+                                        "timeZone": {
+                                            "type": "string",
+                                            "description": "Timezone of the event (defaults to Asia/Kolkata)"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "required": ["updated_details"],
+                    "oneOf": [
+                        {"required": ["event_name"]},
+                        {"required": ["event_date"]}
+                    ]
+                }
+            },
+            {
+                "name": "delete_event",
+                "description": "Delete a calendar event by name or date",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "event_name": {
+                            "type": "string",
+                            "description": "Name of the event to delete (optional if event_date is provided)"
+                        },
+                        "event_date": {
+                            "type": "string",
+                            "description": "Date and time of the event to delete in ISO format (optional if event_name is provided)"
+                        }
+                    },
+                    "oneOf": [
+                        {"required": ["event_name"]},
+                        {"required": ["event_date"]}
+                    ]
+                }
+            },
+            {
+                "name": "get_events",
+                "description": "Search for calendar events by name and/or date range",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "event_name": {
+                            "type": "string",
+                            "description": "Name or keyword to search for in event summaries"
+                        },
+                        "start_date": {
+                            "type": "string",
+                            "description": "Start date for search range in ISO format (defaults to current time)"
+                        },
+                        "end_date": {
+                            "type": "string",
+                            "description": "End date for search range in ISO format (defaults to start_date + 30 days)"
+                        }
+                    },
+                    "required": []
+                }
+            },
+            {
+                "name": "get_all_events",
+                "description": "Get all events from the calendar within a one-year range",
+                "parameters": {
+                    "type": "object",
+                    "properties": {},
                     "required": []
                 }
             }
