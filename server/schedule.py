@@ -78,24 +78,34 @@ def get_events(service, calendar_id: str, event_name: Optional[str] = None,
                 start_date = current_time.replace(hour=0, minute=0, second=0, microsecond=0)
                 end_date = start_date.replace(hour=23, minute=59, second=59, microsecond=999999)
         else:
-            # Convert input dates to IST if they are naive (no timezone)
+            print(f"Original start_date: {start_date}")
+            print(f"Original end_date: {end_date}")
+            
+            # Convert input dates to UTC if they are naive (no timezone)
             if start_date and start_date.tzinfo is None:
-                start_date = start_date.replace(tzinfo=ZoneInfo('UTC')).astimezone(ZoneInfo('Asia/Kolkata'))
+                # Assume the input time is already in IST
+                start_date = start_date.replace(tzinfo=ZoneInfo('Asia/Kolkata'))
+                print(f"Added IST timezone to start_date: {start_date}")
+            
             if end_date and end_date.tzinfo is None:
-                end_date = end_date.replace(tzinfo=ZoneInfo('UTC')).astimezone(ZoneInfo('Asia/Kolkata'))
+                # Assume the input time is already in IST
+                end_date = end_date.replace(tzinfo=ZoneInfo('Asia/Kolkata'))
+                print(f"Added IST timezone to end_date: {end_date}")
             
             # If only start_date is provided, set end_date to end of that day
             if start_date and not end_date:
                 end_date = start_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+                print(f"Set end_date to end of day: {end_date}")
+            
             # If only end_date is provided, set start_date to beginning of that day
             elif end_date and not start_date:
                 start_date = end_date.replace(hour=0, minute=0, second=0, microsecond=0)
+                print(f"Set start_date to start of day: {start_date}")
             
-            # Ensure both dates are in IST
-            if start_date.tzinfo != ZoneInfo('Asia/Kolkata'):
-                start_date = start_date.astimezone(ZoneInfo('Asia/Kolkata'))
-            if end_date.tzinfo != ZoneInfo('Asia/Kolkata'):
-                end_date = end_date.astimezone(ZoneInfo('Asia/Kolkata'))
+            # Add buffer time to ensure we catch all events
+            start_date = start_date - timedelta(minutes=5)
+            end_date = end_date + timedelta(minutes=5)
+            print(f"Final search window: {start_date} to {end_date}")
             
         time_min = start_date.isoformat()
         time_max = end_date.isoformat()
@@ -124,6 +134,10 @@ def get_events(service, calendar_id: str, event_name: Optional[str] = None,
                 if event_name.lower() in event.get('summary', '').lower()
             ]
             print(f"Found {len(events)} events matching name '{event_name}'")
+            
+        # Print details of found events for debugging
+        for event in events:
+            print(f"Event: {event.get('summary')} at {event.get('start')}")
             
         return events
         
@@ -186,19 +200,36 @@ def update_event(service, calendar_id: str, updated_details: Dict[str, Any],
                 "updated_event": None
             }
             
+        # Get current time in IST
+        current_time = get_ist_time()
+            
         # Search for the event
         start_date = None
         end_date = None
         if event_date:
-            # Convert event_date to IST if needed
+            print(f"Original event_date: {event_date}")
+            
+            # If the date is naive (no timezone), assume it's in IST
             if event_date.tzinfo is None:
-                event_date = event_date.replace(tzinfo=ZoneInfo('UTC')).astimezone(ZoneInfo('Asia/Kolkata'))
-            elif event_date.tzinfo != ZoneInfo('Asia/Kolkata'):
-                event_date = event_date.astimezone(ZoneInfo('Asia/Kolkata'))
-                
-            start_date = event_date - timedelta(minutes=1)
-            end_date = event_date + timedelta(minutes=1)
+                event_date = event_date.replace(tzinfo=ZoneInfo('Asia/Kolkata'))
+                print(f"Added IST timezone: {event_date}")
+            
+            # Set search window to ±5 minutes around the event date
+            start_date = event_date - timedelta(minutes=5)
+            end_date = event_date + timedelta(minutes=5)
+            print(f"Search window: {start_date} to {end_date}")
+            
+            # If no time component in the date, search the entire day
+            if event_date.hour == 0 and event_date.minute == 0:
+                start_date = event_date.replace(hour=0, minute=0, second=0, microsecond=0)
+                end_date = event_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+                print(f"Full day search: {start_date} to {end_date}")
+        else:
+            # If only searching by name, use a wider time range
+            start_date = current_time - timedelta(days=30)
+            end_date = current_time + timedelta(days=30)
         
+        # Search for the event
         events = get_events(
             service,
             calendar_id,
@@ -212,7 +243,7 @@ def update_event(service, calendar_id: str, updated_details: Dict[str, Any],
             if event_name:
                 search_criteria.append(f"name '{event_name}'")
             if event_date:
-                search_criteria.append(f"date {event_date}")
+                search_criteria.append(f"date {event_date.strftime('%Y-%m-%d %H:%M:%S %Z')}")
             return {
                 "success": False,
                 "message": f"No event found with {', '.join(search_criteria)}",
@@ -246,11 +277,14 @@ def update_event(service, calendar_id: str, updated_details: Dict[str, Any],
                     updated_event_body[key] = value
                 else:
                     updated_event_body[key] = value
+            else:
+                # If value is None, remove the field from the body
+                updated_event_body.pop(key, None)
         
-        # Ensure timezone is set for start and end times
-        if updated_event_body.get('start'):
+        # Ensure timezone is set for start and end times if they exist
+        if 'start' in updated_event_body and updated_event_body['start']:
             updated_event_body['start']['timeZone'] = 'Asia/Kolkata'
-        if updated_event_body.get('end'):
+        if 'end' in updated_event_body and updated_event_body['end']:
             updated_event_body['end']['timeZone'] = 'Asia/Kolkata'
             
         # Remove any None values from the body
@@ -303,15 +337,23 @@ def delete_event(service, calendar_id: str,
         start_date = None
         end_date = None
         if event_date:
-            # Convert event_date to IST if needed
-            if event_date.tzinfo is None:
-                event_date = event_date.replace(tzinfo=ZoneInfo('UTC')).astimezone(ZoneInfo('Asia/Kolkata'))
-            elif event_date.tzinfo != ZoneInfo('Asia/Kolkata'):
-                event_date = event_date.astimezone(ZoneInfo('Asia/Kolkata'))
+            print(f"Original event_date: {event_date}")
             
-            # Set search window to ±1 minute around the event date
-            start_date = event_date - timedelta(minutes=1)
-            end_date = event_date + timedelta(minutes=1)
+            # If the date is naive (no timezone), assume it's in IST
+            if event_date.tzinfo is None:
+                event_date = event_date.replace(tzinfo=ZoneInfo('Asia/Kolkata'))
+                print(f"Added IST timezone: {event_date}")
+            
+            # Set search window to ±5 minutes around the event date
+            start_date = event_date - timedelta(minutes=5)
+            end_date = event_date + timedelta(minutes=5)
+            print(f"Search window: {start_date} to {end_date}")
+            
+            # If no time component in the date, search the entire day
+            if event_date.hour == 0 and event_date.minute == 0:
+                start_date = event_date.replace(hour=0, minute=0, second=0, microsecond=0)
+                end_date = event_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+                print(f"Full day search: {start_date} to {end_date}")
         else:
             # If only searching by name, use a wider time range
             start_date = current_time - timedelta(days=30)
@@ -326,12 +368,14 @@ def delete_event(service, calendar_id: str,
             end_date=end_date
         )
         
+        print(f"Found {len(events)} events in search window")
+        
         if not events:
             search_criteria = []
             if event_name:
                 search_criteria.append(f"name '{event_name}'")
             if event_date:
-                search_criteria.append(f"date {event_date}")
+                search_criteria.append(f"date {event_date.strftime('%Y-%m-%d %H:%M:%S %Z')}")
             return {
                 "success": False,
                 "message": f"No event found with {', '.join(search_criteria)}",
@@ -341,6 +385,8 @@ def delete_event(service, calendar_id: str,
         # Get the first matching event
         event = events[0]
         event_id = event['id']
+        
+        print(f"Found event: {event.get('summary')} at {event.get('start')}")
         
         # Delete the event
         service.events().delete(
